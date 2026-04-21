@@ -1,22 +1,28 @@
-aws_region   = "eu-west-2"
-project_name = "AWSNetworkFirewall"
+aws_region   = "eu-west-1"
+aws_profile  = "default"
+project_name = "nw-fw-tgw"
 
-vpc_cidr = "172.31.0.0/16"
+# Workload VPC A — eu-west-2a / eu-west-2b
+workload_a_vpc_cidr         = "10.1.0.0/16"
+workload_a_subnet_cidrs     = ["10.1.1.0/24", "10.1.2.0/24"]
+workload_a_tgw_subnet_cidrs = ["10.1.10.0/28", "10.1.11.0/28"]
 
-firewall_subnet = ["172.31.1.0/24"]
-workload_subnet = ["172.31.2.0/24"]
-nat_gw_subnet   = ["172.31.3.0/24"]
-instance_count  = "1"
+# Workload VPC B — eu-west-2a / eu-west-2b
+workload_b_vpc_cidr         = "10.2.0.0/16"
+workload_b_subnet_cidrs     = ["10.2.1.0/24", "10.2.2.0/24"]
+workload_b_tgw_subnet_cidrs = ["10.2.10.0/28", "10.2.11.0/28"]
 
-flowlog_role   = "VPC-Flowlog-Writer"
-flowlog_policy = "VPCFlowLogsWriter"
+# Egress VPC
+egress_vpc_cidr            = "10.0.0.0/16"
+egress_public_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
+egress_tgw_subnet_cidrs    = ["10.0.10.0/28", "10.0.11.0/28"]
 
-instance_profile = ""
-accessip         = "0.0.0.0/0"
+# Compute — Amazon Linux 2023 eu-west-1
+ami           = "ami-0720a3ca2735bf2fa"
+instance_type = "t3.micro"
+disk_size     = 20
 
-private_instance = "t2.micro"
-private_ami      = "ami-0c76bd4bd302b30ec"
-private_disk     = "60"
-policy_name      = "fw-role-policy"
-role_name        = "fw-iam-role"
-s3_policy        = "fw-s3-policy"
+# IAM
+role_name   = "fw-iam-role"
+policy_name = "fw-role-policy"
+s3_policy   = "fw-s3-policy"

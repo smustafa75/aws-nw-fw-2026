@@ -1,43 +1,13 @@
-
 provider "aws" {
   region  = var.aws_region
-  profile = "render"
+  profile = var.aws_profile
 }
 
-module "network" {
-  source          = "./network"
-  vpc_cidr        = var.vpc_cidr
-  firewall_subnet = var.firewall_subnet
-  workload_subnet = var.workload_subnet
-  nat_gw_subnet   = var.nat_gw_subnet
-  region_info     = data.aws_region.current.name
-  project_name    = var.project_name
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
 
-}
-
-module "compute" {
-  source     = "./compute"
-  aws_region = var.aws_region
-
-
-  private_instance = var.private_instance
-  private_ami      = var.private_ami
-  private_disk     = var.private_disk
-
-
-  workload_net           = module.network.workload_subnet
-  public_security_group  = module.network.public_security_group
-  private_security_group = module.network.private_security_group
-  instance_profile       = module.iam.iam_instance_profile
-  vpc_id                 = module.network.vpcname
-
-  project_name = var.project_name
-
-  depends_on = [
-    module.iam.iam_instance_profile_arn
-  ]
-}
-
+# ── IAM (reused from existing module) ────────────────────────────────────────
 
 module "iam" {
   source         = "./iam"
@@ -47,4 +17,97 @@ module "iam" {
   region_info    = data.aws_region.current.name
   account_id     = data.aws_caller_identity.current.account_id
   partition_info = data.aws_partition.current.partition
+}
+
+# ── Firewall Policy ───────────────────────────────────────────────────────────
+
+module "firewall" {
+  source       = "./modules/firewall"
+  project_name = var.project_name
+}
+
+# ── Workload VPC A ────────────────────────────────────────────────────────────
+
+module "workload_vpc_a" {
+  source                = "./modules/workload_vpc"
+  name                  = "workload-a"
+  vpc_cidr              = var.workload_a_vpc_cidr
+  workload_subnet_cidrs = var.workload_a_subnet_cidrs
+  tgw_subnet_cidrs      = var.workload_a_tgw_subnet_cidrs
+  tgw_id                = module.tgw.tgw_id
+  region                = data.aws_region.current.name
+}
+
+# ── Workload VPC B ────────────────────────────────────────────────────────────
+
+module "workload_vpc_b" {
+  source                = "./modules/workload_vpc"
+  name                  = "workload-b"
+  vpc_cidr              = var.workload_b_vpc_cidr
+  workload_subnet_cidrs = var.workload_b_subnet_cidrs
+  tgw_subnet_cidrs      = var.workload_b_tgw_subnet_cidrs
+  tgw_id                = module.tgw.tgw_id
+  region                = data.aws_region.current.name
+}
+
+# ── Egress VPC ────────────────────────────────────────────────────────────────
+
+module "egress_vpc" {
+  source              = "./modules/egress_vpc"
+  vpc_cidr            = var.egress_vpc_cidr
+  public_subnet_cidrs = var.egress_public_subnet_cidrs
+  tgw_subnet_cidrs    = var.egress_tgw_subnet_cidrs
+  tgw_id              = module.tgw.tgw_id
+  workload_a_cidr     = var.workload_a_vpc_cidr
+  workload_b_cidr     = var.workload_b_vpc_cidr
+}
+
+# ── Transit Gateway + NW-FW ───────────────────────────────────────────────────
+
+module "tgw" {
+  source = "./modules/tgw"
+
+  project_name        = var.project_name
+  firewall_policy_arn = module.firewall.firewall_policy_arn
+
+  workload_a_vpc_id        = module.workload_vpc_a.vpc_id
+  workload_a_tgw_subnet_ids = module.workload_vpc_a.tgw_subnet_ids
+  workload_a_cidr          = var.workload_a_vpc_cidr
+
+  workload_b_vpc_id        = module.workload_vpc_b.vpc_id
+  workload_b_tgw_subnet_ids = module.workload_vpc_b.tgw_subnet_ids
+  workload_b_cidr          = var.workload_b_vpc_cidr
+
+  egress_vpc_id        = module.egress_vpc.vpc_id
+  egress_tgw_subnet_ids = module.egress_vpc.tgw_subnet_ids
+
+  depends_on = [module.firewall, module.workload_vpc_a, module.workload_vpc_b, module.egress_vpc]
+}
+
+# ── Compute — Workload VPC A ──────────────────────────────────────────────────
+
+module "compute_a" {
+  source            = "./modules/compute"
+  name              = "workload-a"
+  ami               = var.ami
+  instance_type     = var.instance_type
+  disk_size         = var.disk_size
+  subnet_ids        = module.workload_vpc_a.workload_subnet_ids
+  security_group_id = module.workload_vpc_a.workload_sg_id
+  instance_profile  = module.iam.iam_instance_profile
+  depends_on        = [module.iam]
+}
+
+# ── Compute — Workload VPC B ──────────────────────────────────────────────────
+
+module "compute_b" {
+  source            = "./modules/compute"
+  name              = "workload-b"
+  ami               = var.ami
+  instance_type     = var.instance_type
+  disk_size         = var.disk_size
+  subnet_ids        = module.workload_vpc_b.workload_subnet_ids
+  security_group_id = module.workload_vpc_b.workload_sg_id
+  instance_profile  = module.iam.iam_instance_profile
+  depends_on        = [module.iam]
 }

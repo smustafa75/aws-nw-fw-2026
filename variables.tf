@@ -1,65 +1,28 @@
-variable "aws_region" {
-  default = "eu-west-2"
-}
+variable "aws_region" { default = "eu-west-1" }
+variable "aws_profile" { default = "render" }
+variable "project_name" { default = "nw-fw-tgw" }
 
-variable "project_name" {
-  default = "AWSNetworkFirewall"
-}
+# Workload VPC A
+variable "workload_a_vpc_cidr" {}
+variable "workload_a_subnet_cidrs" { type = list(string) }
+variable "workload_a_tgw_subnet_cidrs" { type = list(string) }
 
-variable "vpc_cidr" {
-}
+# Workload VPC B
+variable "workload_b_vpc_cidr" {}
+variable "workload_b_subnet_cidrs" { type = list(string) }
+variable "workload_b_tgw_subnet_cidrs" { type = list(string) }
 
+# Egress VPC
+variable "egress_vpc_cidr" {}
+variable "egress_public_subnet_cidrs" { type = list(string) }
+variable "egress_tgw_subnet_cidrs" { type = list(string) }
 
-variable "firewall_subnet" {
-  type = list(string)
-  #default = []
-}
+# Compute
+variable "ami" {}
+variable "instance_type" { default = "t3.micro" }
+variable "disk_size" { default = 20 }
 
-variable "workload_subnet" {
-  type = list(string)
-  #default = []
-}
-
-variable "nat_gw_subnet" {
-  type = list(string)
-  #default = []
-}
-
-variable "accessip" {
-  default = "0.0.0.0/0"
-}
-
-variable "instance_type" {
-  default = ""
-}
-
-variable "instance_count" {
-  default = 1
-}
-
-variable "flowlog_policy" {
-  default = ""
-}
-
-variable "flowlog_role" {
-  default = ""
-}
-
-variable "role_name" {
-  default = ""
-}
-
-variable "instance_profile" {
-  default = ""
-}
-
-variable "policy_name" {
-  default = ""
-}
-
-variable "s3_policy" {
-  default = ""
-}
-variable "private_instance" {}
-variable "private_ami" {}
-variable "private_disk" {}
+# IAM
+variable "role_name" {}
+variable "policy_name" {}
+variable "s3_policy" {}
