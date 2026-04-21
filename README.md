@@ -45,7 +45,7 @@ Workload VPC A (10.1.0.0/16)          Workload VPC B (10.2.0.0/16)
 ├── terraform.tfvars
 ├── iam/                      # IAM role, SSM + S3 + CW policies, instance profile
 └── modules/
-    ├── firewall/             # NW-FW policy + stateless/stateful rule groups
+    ├── firewall/             # NW-FW policy + stateless/stateful rule groups + CW dashboard
     ├── tgw/                  # Transit Gateway, VPC attachments, NW-FW native attachment, route tables
     ├── workload_vpc/         # VPC, workload subnets (multi-AZ), TGW subnets, SG, SSM endpoints
     ├── egress_vpc/           # VPC, IGW, dual NAT GWs (multi-AZ), TGW subnets, route tables
@@ -96,6 +96,22 @@ ping <workload-b-private-ip>
 # North-south
 curl -I https://example.com
 ```
+
+## CloudWatch Dashboard
+
+A CloudWatch dashboard (`modules/firewall/dashboard.tf`) is deployed automatically. It is named `<project_name>-nwfw-dashboard` and covers:
+
+| Row | Widget | Metric(s) |
+|---|---|---|
+| 1 | Traffic Overview AZ-a | ReceivedPackets, PassedPackets, DroppedPackets |
+| 1 | Traffic Overview AZ-b | ReceivedPackets, PassedPackets, DroppedPackets |
+| 1 | Endpoint Health | HealthyEndpoints, UnhealthyEndpoints |
+| 2 | Dropped Packets (both AZs) | DroppedPackets per AZ |
+| 2 | Blocked & Rejected Flows | BlockedFlows, RejectedFlows per AZ |
+| 3 | Stream Exception Policy | StreamExceptionPolicyPackets — asymmetric routing indicator |
+| 3 | No Rule Group Match | NoRuleGroupMatchPackets — policy gap indicator |
+
+All widgets are scoped per AZ (`eu-west-1a` / `eu-west-1b`) at 1-minute resolution.
 
 ## Clean Up
 
