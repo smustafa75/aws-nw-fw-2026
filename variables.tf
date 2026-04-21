@@ -1,5 +1,5 @@
 variable "aws_region" { default = "eu-west-1" }
-variable "aws_profile" { default = "render" }
+variable "aws_profile" { default = "default" }
 variable "project_name" { default = "nw-fw-tgw" }
 
 # Workload VPC A

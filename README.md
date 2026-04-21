@@ -40,7 +40,7 @@ Workload VPC A (10.1.0.0/16)          Workload VPC B (10.2.0.0/16)
 ├── main.tf                   # Root — wires all modules
 ├── variables.tf
 ├── outputs.tf
-├── data.tf                   # AZ, region, account, partition data sources
+├── data.tf                   # Region, account, and partition data sources
 ├── versions.tf               # Terraform >= 1.3, AWS provider ~> 6.0
 ├── terraform.tfvars
 ├── iam/                      # IAM role, SSM + S3 + CW policies, instance profile
