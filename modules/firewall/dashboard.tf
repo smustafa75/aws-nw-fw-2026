@@ -12,7 +12,10 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
       # ── Row 1: Received vs Passed vs Dropped (AZ-a) ──────────────────────
       {
         type   = "metric"
-        x      = 0; y = 0; width = 8; height = 6
+        x      = 0
+        y      = 0
+        width  = 8
+        height = 6
         properties = {
           title  = "Traffic Overview — ${local.azs[0]}"
           view   = "timeSeries"
@@ -29,7 +32,10 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
       # ── Row 1: Received vs Passed vs Dropped (AZ-b) ──────────────────────
       {
         type   = "metric"
-        x      = 8; y = 0; width = 8; height = 6
+        x      = 8
+        y      = 0
+        width  = 8
+        height = 6
         properties = {
           title  = "Traffic Overview — ${local.azs[1]}"
           view   = "timeSeries"
@@ -46,7 +52,10 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
       # ── Row 1: Healthy / Unhealthy endpoints ─────────────────────────────
       {
         type   = "metric"
-        x      = 16; y = 0; width = 8; height = 6
+        x      = 16
+        y      = 0
+        width  = 8
+        height = 6
         properties = {
           title  = "Endpoint Health"
           view   = "timeSeries"
@@ -65,7 +74,10 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
       # ── Row 2: Dropped packets — both AZs on one graph ───────────────────
       {
         type   = "metric"
-        x      = 0; y = 6; width = 12; height = 6
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
         properties = {
           title  = "Dropped Packets (both AZs)"
           view   = "timeSeries"
@@ -81,7 +93,10 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
       # ── Row 2: Blocked + Rejected flows ──────────────────────────────────
       {
         type   = "metric"
-        x      = 12; y = 6; width = 12; height = 6
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
         properties = {
           title  = "Blocked & Rejected Flows"
           view   = "timeSeries"
@@ -99,7 +114,10 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
       # ── Row 3: Stream exception policy packets ────────────────────────────
       {
         type   = "metric"
-        x      = 0; y = 12; width = 12; height = 6
+        x      = 0
+        y      = 12
+        width  = 12
+        height = 6
         properties = {
           title  = "Stream Exception Policy Packets (asymmetric routing indicator)"
           view   = "timeSeries"
@@ -115,7 +133,10 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
       # ── Row 3: No-rule-group-match packets ───────────────────────────────
       {
         type   = "metric"
-        x      = 12; y = 12; width = 12; height = 6
+        x      = 12
+        y      = 12
+        width  = 12
+        height = 6
         properties = {
           title  = "No Rule Group Match Packets (policy gap indicator)"
           view   = "timeSeries"
