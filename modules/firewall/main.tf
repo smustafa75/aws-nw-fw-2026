@@ -43,7 +43,10 @@ resource "aws_networkfirewall_rule_group" "stateful_allow" {
           destination_port = "ANY"
           direction        = "ANY"
         }
-        rule_option { keyword = "sid"; settings = ["1"] }
+        rule_option {
+          keyword  = "sid"
+          settings = ["1"]
+        }
       }
       stateful_rule {
         action = "PASS"
@@ -55,7 +58,10 @@ resource "aws_networkfirewall_rule_group" "stateful_allow" {
           destination_port = "443"
           direction        = "FORWARD"
         }
-        rule_option { keyword = "sid"; settings = ["2"] }
+        rule_option {
+          keyword  = "sid"
+          settings = ["2"]
+        }
       }
       stateful_rule {
         action = "PASS"
@@ -67,7 +73,10 @@ resource "aws_networkfirewall_rule_group" "stateful_allow" {
           destination_port = "80"
           direction        = "FORWARD"
         }
-        rule_option { keyword = "sid"; settings = ["3"] }
+        rule_option {
+          keyword  = "sid"
+          settings = ["3"]
+        }
       }
     }
   }

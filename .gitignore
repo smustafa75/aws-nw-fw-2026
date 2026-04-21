@@ -13,7 +13,7 @@
 crash.log
 
 # Sensitive file like tfvars etc
-*.tfvars
+#*.tfvars
 
 # Ignore override files
 override.tf

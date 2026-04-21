@@ -62,8 +62,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# TGW subnet route tables — return traffic from internet goes to NAT GW
-# (NAT GW handles the return; inbound from TGW goes to NAT GW for SNAT)
+# TGW subnet route tables — traffic from TGW goes to NAT GW for SNAT
 resource "aws_route_table" "tgw" {
   count  = 2
   vpc_id = aws_vpc.this.id
@@ -78,19 +77,4 @@ resource "aws_route_table_association" "tgw" {
   count          = 2
   subnet_id      = aws_subnet.tgw[count.index].id
   route_table_id = aws_route_table.tgw[count.index].id
-}
-
-# Return routes: workload CIDRs via TGW (added after TGW attachment is known)
-resource "aws_route" "tgw_to_workload_a" {
-  count                  = 2
-  route_table_id         = aws_route_table.tgw[count.index].id
-  destination_cidr_block = var.workload_a_cidr
-  transit_gateway_id     = var.tgw_id
-}
-
-resource "aws_route" "tgw_to_workload_b" {
-  count                  = 2
-  route_table_id         = aws_route_table.tgw[count.index].id
-  destination_cidr_block = var.workload_b_cidr
-  transit_gateway_id     = var.tgw_id
 }

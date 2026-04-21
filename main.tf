@@ -7,7 +7,7 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
-# ── IAM (reused from existing module) ────────────────────────────────────────
+# ── IAM ───────────────────────────────────────────────────────────────────────
 
 module "iam" {
   source         = "./iam"
@@ -34,7 +34,6 @@ module "workload_vpc_a" {
   vpc_cidr              = var.workload_a_vpc_cidr
   workload_subnet_cidrs = var.workload_a_subnet_cidrs
   tgw_subnet_cidrs      = var.workload_a_tgw_subnet_cidrs
-  tgw_id                = module.tgw.tgw_id
   region                = data.aws_region.current.name
 }
 
@@ -46,7 +45,6 @@ module "workload_vpc_b" {
   vpc_cidr              = var.workload_b_vpc_cidr
   workload_subnet_cidrs = var.workload_b_subnet_cidrs
   tgw_subnet_cidrs      = var.workload_b_tgw_subnet_cidrs
-  tgw_id                = module.tgw.tgw_id
   region                = data.aws_region.current.name
 }
 
@@ -57,9 +55,6 @@ module "egress_vpc" {
   vpc_cidr            = var.egress_vpc_cidr
   public_subnet_cidrs = var.egress_public_subnet_cidrs
   tgw_subnet_cidrs    = var.egress_tgw_subnet_cidrs
-  tgw_id              = module.tgw.tgw_id
-  workload_a_cidr     = var.workload_a_vpc_cidr
-  workload_b_cidr     = var.workload_b_vpc_cidr
 }
 
 # ── Transit Gateway + NW-FW ───────────────────────────────────────────────────
@@ -70,18 +65,47 @@ module "tgw" {
   project_name        = var.project_name
   firewall_policy_arn = module.firewall.firewall_policy_arn
 
-  workload_a_vpc_id        = module.workload_vpc_a.vpc_id
+  workload_a_vpc_id         = module.workload_vpc_a.vpc_id
   workload_a_tgw_subnet_ids = module.workload_vpc_a.tgw_subnet_ids
-  workload_a_cidr          = var.workload_a_vpc_cidr
+  workload_a_cidr           = var.workload_a_vpc_cidr
 
-  workload_b_vpc_id        = module.workload_vpc_b.vpc_id
+  workload_b_vpc_id         = module.workload_vpc_b.vpc_id
   workload_b_tgw_subnet_ids = module.workload_vpc_b.tgw_subnet_ids
-  workload_b_cidr          = var.workload_b_vpc_cidr
+  workload_b_cidr           = var.workload_b_vpc_cidr
 
-  egress_vpc_id        = module.egress_vpc.vpc_id
+  egress_vpc_id         = module.egress_vpc.vpc_id
   egress_tgw_subnet_ids = module.egress_vpc.tgw_subnet_ids
+}
 
-  depends_on = [module.firewall, module.workload_vpc_a, module.workload_vpc_b, module.egress_vpc]
+# ── Post-TGW VPC Routes (added after TGW is ready to break dependency cycle) ──
+
+# Workload VPC A — default route to TGW
+resource "aws_route" "workload_a_default" {
+  route_table_id         = module.workload_vpc_a.workload_route_table_id
+  destination_cidr_block = "0.0.0.0/0"
+  transit_gateway_id     = module.tgw.tgw_id
+}
+
+# Workload VPC B — default route to TGW
+resource "aws_route" "workload_b_default" {
+  route_table_id         = module.workload_vpc_b.workload_route_table_id
+  destination_cidr_block = "0.0.0.0/0"
+  transit_gateway_id     = module.tgw.tgw_id
+}
+
+# Egress VPC TGW subnets — return routes to workload CIDRs via TGW
+resource "aws_route" "egress_to_workload_a" {
+  count                  = 2
+  route_table_id         = module.egress_vpc.tgw_route_table_ids[count.index]
+  destination_cidr_block = var.workload_a_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
+}
+
+resource "aws_route" "egress_to_workload_b" {
+  count                  = 2
+  route_table_id         = module.egress_vpc.tgw_route_table_ids[count.index]
+  destination_cidr_block = var.workload_b_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
 }
 
 # ── Compute — Workload VPC A ──────────────────────────────────────────────────

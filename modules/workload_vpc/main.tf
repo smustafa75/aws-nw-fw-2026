@@ -25,14 +25,10 @@ resource "aws_subnet" "tgw" {
   tags = { Name = "${var.name}-tgw-${count.index + 1}" }
 }
 
-# Route table for workload subnets — default route to TGW
+# Route table for workload subnets — default route added from root after TGW is created
 resource "aws_route_table" "workload" {
   vpc_id = aws_vpc.this.id
-  route {
-    cidr_block         = "0.0.0.0/0"
-    transit_gateway_id = var.tgw_id
-  }
-  tags = { Name = "${var.name}-workload-rt" }
+  tags   = { Name = "${var.name}-workload-rt" }
 }
 
 resource "aws_route_table_association" "workload" {
