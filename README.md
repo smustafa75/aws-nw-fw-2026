@@ -1,117 +1,107 @@
-# AWS Network Firewall Deployment
+# AWS Network Firewall — Native Transit Gateway Integration
 
-This repository contains Terraform code to deploy AWS Network Firewall in a centralized inspection architecture. The implementation focuses on inspecting traffic from private workloads to the internet, which is one of the common deployment models for AWS Network Firewall.
+Terraform implementation of AWS Network Firewall with native Transit Gateway attachment (GA in eu-west-1). No inspection VPC required.
 
-## Architecture Overview
+## Architecture
 
-The deployment creates the following components:
+```
+Workload VPC A (10.1.0.0/16)          Workload VPC B (10.2.0.0/16)
+  ├── workload-a-instance-1 (AZ-a)      ├── workload-b-instance-1 (AZ-a)
+  ├── workload-a-instance-2 (AZ-b)      ├── workload-b-instance-2 (AZ-b)
+  └── TGW attachment subnets            └── TGW attachment subnets
+              │                                      │
+              └──────────── Transit Gateway ─────────┘
+                                  │
+                        AWS Network Firewall
+                       (native TGW attachment)
+                                  │
+                         Egress VPC (10.0.0.0/16)
+                           ├── NAT GW AZ-a
+                           ├── NAT GW AZ-b
+                           └── Internet Gateway
+```
 
-- **VPC**: A VPC with CIDR block 172.31.0.0/16
-- **Subnets**:
-  - Firewall subnet (172.31.1.0/24) - Hosts the AWS Network Firewall endpoints
-  - Workload subnet (172.31.2.0/24) - Hosts private EC2 instances
-  - NAT Gateway subnet (172.31.3.0/24) - Hosts the NAT Gateway for outbound traffic
+### Traffic Flows
 
-- **Network Components**:
-  - AWS Network Firewall with stateful and stateless rule groups
-  - NAT Gateway for outbound internet access
-  - Internet Gateway for inbound/outbound connectivity
-  - Custom route tables to direct traffic through the firewall
-  - S3 VPC endpoint for private access to S3
+- **East-West** (VPC A ↔ VPC B): TGW → NW-FW inspection → TGW → destination
+- **North-South** (workload → internet): TGW → NW-FW inspection → Egress VPC → NAT GW → IGW
 
-- **Compute Resources**:
-  - EC2 instance (t2.micro) in the private workload subnet
-  - Security groups with rules for HTTP, HTTPS, SSH, RDP, and ICMP traffic
+### TGW Route Tables
 
-- **IAM Resources**:
-  - IAM roles and policies for EC2 instance access
-  - VPC Endpoints for AWS services (SSM, EC2 Messages, SSM Messages)
+| Route Table | Associated To | Routes |
+|---|---|---|
+| spoke-rt | Workload VPC A & B attachments | 0.0.0.0/0, 10.1.0.0/16, 10.2.0.0/16 → NW-FW |
+| firewall-rt | NW-FW attachment | 10.1.0.0/16 → VPC A, 10.2.0.0/16 → VPC B, 0.0.0.0/0 → Egress |
+| egress-rt | Egress VPC attachment | 10.1.0.0/16, 10.2.0.0/16 → NW-FW |
 
-## Network Flow
+## Module Structure
 
-The architecture implements a centralized inspection model where:
+```
+├── main.tf                   # Root — wires all modules
+├── variables.tf
+├── terraform.tfvars
+├── outputs.tf
+├── iam/                      # IAM role, SSM + S3 + CW policies, instance profile
+└── modules/
+    ├── firewall/             # NW-FW policy + stateless/stateful rule groups
+    ├── tgw/                  # Transit Gateway, VPC attachments, NW-FW native attachment, route tables
+    ├── workload_vpc/         # VPC, workload subnets (multi-AZ), TGW subnets, SG, SSM endpoints
+    ├── egress_vpc/           # VPC, IGW, dual NAT GWs (multi-AZ), TGW subnets, route tables
+    └── compute/              # 2 EC2 instances per workload VPC (one per AZ)
+```
 
-1. Outbound traffic from private instances in the workload subnet is routed to the NAT Gateway
-2. Traffic from the NAT Gateway is routed through the Network Firewall for inspection
-3. Inspected traffic is then forwarded to the Internet Gateway for internet access
+## Resources Created
+
+| Resource | Count |
+|---|---|
+| VPCs | 3 (workload-a, workload-b, egress) |
+| Transit Gateway | 1 |
+| AWS Network Firewall | 1 (TGW-attached, no VPC) |
+| TGW Route Tables | 3 |
+| EC2 Instances | 4 (2 per workload VPC) |
+| NAT Gateways | 2 (one per AZ in egress VPC) |
+| SSM VPC Endpoints | 6 (ssm, ssmmessages, ec2messages × 2 VPCs) |
+
 ## Firewall Rules
 
-The deployment includes:
-
-1. **Stateful Rule Group**: Permits ICMP traffic from any source
-   - Action: PASS
-   - Protocol: ICMP
-   - Direction: ANY
-   - Source: ANY
-
-2. **Stateless Rule Group**: Allows ICMP traffic (protocol 1)
-   - Priority: 1
-   - Source: 0.0.0.0/0
-   - Destination: 0.0.0.0/0
-   - Action: aws:pass4. Return traffic follows the reverse path, being inspected by the firewall before reaching the private instances
-5. The firewall is configured to allow ICMP traffic (ping) to demonstrate connectivity
-
-## Routing Configuration
-
-The deployment implements a sophisticated routing configuration:
-
-1. **Private Route Table**: Routes traffic from workload subnet (172.31.2.0/24) to the NAT Gateway
-2. **NAT Gateway Route Table**: Routes traffic from NAT Gateway subnet (172.31.3.0/24) through the Network Firewall
-3. **Firewall Route Table**: Routes traffic from firewall subnet (172.31.1.0/24) to the Internet Gateway
-4. **Edge Association Route Table**: Routes traffic from the Internet Gateway to the appropriate subnets through the Network Firewall
-
-This routing configuration ensures all traffic is properly inspected while maintaining connectivity.
+- **Stateless**: forward all traffic to stateful engine
+- **Stateful PASS**: ICMP (any direction), TCP 443 and TCP 80 from `10.0.0.0/8`
+- **Default**: drop all other traffic
 
 ## Prerequisites
 
-- AWS CLI configured with appropriate credentials
-- Terraform installed (version 0.12+)
-- Basic understanding of AWS networking concepts
+- AWS CLI configured with profile `render`
+- Terraform >= 1.3
+- Region: `eu-west-1` (Ireland) — NW-FW native TGW integration is GA here
 
-## Deployment Instructions
+## Deploy
 
-1. Clone this repository
-2. Review and modify the `terraform.tfvars` file if needed
-3. Initialize Terraform:
-   ```
-   terraform init
-   ```
-4. Plan the deployment:
-   ```
-   terraform plan
-   ```
-5. Apply the configuration:
-   ```
-   terraform apply
-   ```
-
-## Testing Connectivity
-
-Once deployed, you can connect to the EC2 instance in the private subnet using AWS Systems Manager Session Manager and test connectivity by pinging external domains.
-
-Example:
-```
-ping google.com
+```bash
+terraform init
+terraform plan
+terraform apply
 ```
 
-## Important Notes
+## Test Connectivity
 
-- This deployment creates approximately 39 AWS resources and may exceed AWS free tier limits.
-- The architecture is designed for demonstration purposes and may need adjustments for production use.
-- Security groups are configured with permissive rules for demonstration - restrict these for production use.
-- The EC2 instance is configured with SSM access for management without requiring direct SSH access.
+Connect via SSM Session Manager (no SSH required):
 
-## Reference Architecture
+```bash
+# East-west ping (from instance in VPC A to instance in VPC B)
+ping <workload-b-private-ip>
 
-This implementation is based on the centralized inspection model described in AWS documentation:
-
-1. [Deployment Models for AWS Network Firewall](https://aws.amazon.com/blogs/networking-and-content-delivery/deployment-models-for-aws-network-firewall/)
-2. [AWS Network Firewall Documentation](https://docs.aws.amazon.com/network-firewall/latest/developerguide/what-is-aws-network-firewall.html)
+# North-south
+curl -I https://example.com
+```
 
 ## Clean Up
 
-To avoid ongoing charges, remember to destroy the resources when they're no longer needed:
-
-```
+```bash
 terraform destroy
 ```
+
+## References
+
+- [AWS Network Firewall native Transit Gateway support](https://aws.amazon.com/about-aws/whats-new/2025/06/aws-network-firewall-transit-gateway-native-integration/)
+- [Route traffic through a TGW network function attachment](https://docs.aws.amazon.com/vpc/latest/tgw/route-traffic-nf-attachment.html)
+- [AWS Network Firewall Developer Guide](https://docs.aws.amazon.com/network-firewall/latest/developerguide/what-is-aws-network-firewall.html)
