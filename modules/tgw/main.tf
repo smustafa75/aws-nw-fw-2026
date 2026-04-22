@@ -152,3 +152,10 @@ resource "aws_ec2_transit_gateway_route" "egress_workload_b" {
   transit_gateway_attachment_id  = local.fw_attachment_id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.egress.id
 }
+
+# Default route: internet-bound traffic from egress VPC exits back to egress VPC attachment
+resource "aws_ec2_transit_gateway_route" "egress_default" {
+  destination_cidr_block         = "0.0.0.0/0"
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.egress.id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.egress.id
+}
