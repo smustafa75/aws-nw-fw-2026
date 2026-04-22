@@ -6,6 +6,12 @@ locals {
 resource "aws_cloudwatch_dashboard" "nwfw" {
   dashboard_name = "${var.project_name}-nwfw-dashboard"
 
+  depends_on = [
+    aws_networkfirewall_firewall_policy.policy,
+    aws_networkfirewall_rule_group.stateless_fwd,
+    aws_networkfirewall_rule_group.stateful_allow,
+  ]
+
   dashboard_body = jsonencode({
     widgets = [
 
@@ -17,14 +23,15 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         width  = 8
         height = 6
         properties = {
+          region = var.region
           title  = "Traffic Overview — ${local.azs[0]}"
           view   = "timeSeries"
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "ReceivedPackets",  "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
-            ["AWS/NetworkFirewall", "PassedPackets",    "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
-            ["AWS/NetworkFirewall", "DroppedPackets",   "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]]
+            ["AWS/NetworkFirewall", "ReceivedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
+            ["AWS/NetworkFirewall", "PassedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
+            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]]
           ]
         }
       },
@@ -37,14 +44,15 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         width  = 8
         height = 6
         properties = {
+          region = var.region
           title  = "Traffic Overview — ${local.azs[1]}"
           view   = "timeSeries"
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "ReceivedPackets",  "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]],
-            ["AWS/NetworkFirewall", "PassedPackets",    "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]],
-            ["AWS/NetworkFirewall", "DroppedPackets",   "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]]
+            ["AWS/NetworkFirewall", "ReceivedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]],
+            ["AWS/NetworkFirewall", "PassedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]],
+            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]]
           ]
         }
       },
@@ -57,12 +65,13 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         width  = 8
         height = 6
         properties = {
+          region = var.region
           title  = "Endpoint Health"
           view   = "timeSeries"
           stat   = "Minimum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "HealthyEndpoints",   "FirewallName", local.fw_name],
+            ["AWS/NetworkFirewall", "HealthyEndpoints", "FirewallName", local.fw_name],
             ["AWS/NetworkFirewall", "UnhealthyEndpoints", "FirewallName", local.fw_name]
           ]
           annotations = {
@@ -79,6 +88,7 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         width  = 12
         height = 6
         properties = {
+          region = var.region
           title  = "Dropped Packets (both AZs)"
           view   = "timeSeries"
           stat   = "Sum"
@@ -98,13 +108,14 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         width  = 12
         height = 6
         properties = {
+          region = var.region
           title  = "Blocked & Rejected Flows"
           view   = "timeSeries"
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "BlockedFlows",  "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
-            ["AWS/NetworkFirewall", "BlockedFlows",  "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]],
+            ["AWS/NetworkFirewall", "BlockedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
+            ["AWS/NetworkFirewall", "BlockedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]],
             ["AWS/NetworkFirewall", "RejectedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
             ["AWS/NetworkFirewall", "RejectedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]]
           ]
@@ -119,6 +130,7 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         width  = 12
         height = 6
         properties = {
+          region = var.region
           title  = "Stream Exception Policy Packets (asymmetric routing indicator)"
           view   = "timeSeries"
           stat   = "Sum"
@@ -138,6 +150,7 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         width  = 12
         height = 6
         properties = {
+          region = var.region
           title  = "No Rule Group Match Packets (policy gap indicator)"
           view   = "timeSeries"
           stat   = "Sum"

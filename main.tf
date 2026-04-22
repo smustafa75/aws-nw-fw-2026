@@ -20,6 +20,7 @@ module "iam" {
 module "firewall" {
   source       = "./modules/firewall"
   project_name = var.project_name
+  region       = data.aws_region.current.name
 }
 
 # ── Workload VPC A ────────────────────────────────────────────────────────────
@@ -100,6 +101,19 @@ resource "aws_route" "egress_to_workload_a" {
 resource "aws_route" "egress_to_workload_b" {
   count                  = 2
   route_table_id         = module.egress_vpc.tgw_route_table_ids[count.index]
+  destination_cidr_block = var.workload_b_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
+}
+
+# Egress VPC public subnet RT — NAT GW return traffic must reach TGW for workload CIDRs
+resource "aws_route" "egress_public_to_workload_a" {
+  route_table_id         = module.egress_vpc.public_route_table_id
+  destination_cidr_block = var.workload_a_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
+}
+
+resource "aws_route" "egress_public_to_workload_b" {
+  route_table_id         = module.egress_vpc.public_route_table_id
   destination_cidr_block = var.workload_b_vpc_cidr
   transit_gateway_id     = module.tgw.tgw_id
 }

@@ -54,11 +54,6 @@ resource "aws_networkfirewall_firewall" "fw" {
   tags = { Name = "NW-FW-${var.project_name}" }
 }
 
-# Accept the TGW attachment (same-account — moves firewall from Pending → Ready)
-resource "aws_networkfirewall_firewall_transit_gateway_attachment_accepter" "fw_accepter" {
-  transit_gateway_attachment_id = aws_networkfirewall_firewall.fw.firewall_status[0].transit_gateway_attachment_sync_states[0].attachment_id
-}
-
 # ── TGW Route Tables ──────────────────────────────────────────────────────────
 
 resource "aws_ec2_transit_gateway_route_table" "spoke" {
@@ -91,7 +86,6 @@ resource "aws_ec2_transit_gateway_route_table_association" "workload_b" {
 resource "aws_ec2_transit_gateway_route_table_association" "fw" {
   transit_gateway_attachment_id  = aws_networkfirewall_firewall.fw.firewall_status[0].transit_gateway_attachment_sync_states[0].attachment_id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.firewall.id
-  depends_on                     = [aws_networkfirewall_firewall_transit_gateway_attachment_accepter.fw_accepter]
 }
 
 resource "aws_ec2_transit_gateway_route_table_association" "egress" {
@@ -111,21 +105,18 @@ resource "aws_ec2_transit_gateway_route" "spoke_default" {
   destination_cidr_block         = "0.0.0.0/0"
   transit_gateway_attachment_id  = local.fw_attachment_id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.spoke.id
-  depends_on                     = [aws_networkfirewall_firewall_transit_gateway_attachment_accepter.fw_accepter]
 }
 
 resource "aws_ec2_transit_gateway_route" "spoke_workload_a" {
   destination_cidr_block         = var.workload_a_cidr
   transit_gateway_attachment_id  = local.fw_attachment_id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.spoke.id
-  depends_on                     = [aws_networkfirewall_firewall_transit_gateway_attachment_accepter.fw_accepter]
 }
 
 resource "aws_ec2_transit_gateway_route" "spoke_workload_b" {
   destination_cidr_block         = var.workload_b_cidr
   transit_gateway_attachment_id  = local.fw_attachment_id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.spoke.id
-  depends_on                     = [aws_networkfirewall_firewall_transit_gateway_attachment_accepter.fw_accepter]
 }
 
 # ── Firewall RT Routes → back to spokes + egress ──────────────────────────────
@@ -154,12 +145,10 @@ resource "aws_ec2_transit_gateway_route" "egress_workload_a" {
   destination_cidr_block         = var.workload_a_cidr
   transit_gateway_attachment_id  = local.fw_attachment_id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.egress.id
-  depends_on                     = [aws_networkfirewall_firewall_transit_gateway_attachment_accepter.fw_accepter]
 }
 
 resource "aws_ec2_transit_gateway_route" "egress_workload_b" {
   destination_cidr_block         = var.workload_b_cidr
   transit_gateway_attachment_id  = local.fw_attachment_id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.egress.id
-  depends_on                     = [aws_networkfirewall_firewall_transit_gateway_attachment_accepter.fw_accepter]
 }
