@@ -66,11 +66,15 @@ resource "aws_route_table_association" "public" {
 resource "aws_route_table" "tgw" {
   count  = 2
   vpc_id = aws_vpc.this.id
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat[count.index].id
-  }
-  tags = { Name = "egress-tgw-rt-${count.index + 1}" }
+  tags   = { Name = "egress-tgw-rt-${count.index + 1}" }
+}
+
+# Separate aws_route to avoid inline/external route conflict on re-apply
+resource "aws_route" "tgw_default" {
+  count          = 2
+  route_table_id = aws_route_table.tgw[count.index].id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id = aws_nat_gateway.nat[count.index].id
 }
 
 resource "aws_route_table_association" "tgw" {
