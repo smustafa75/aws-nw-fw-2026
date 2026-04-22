@@ -12,3 +12,8 @@ variable "workload_b_cidr" {}
 
 variable "egress_vpc_id" {}
 variable "egress_tgw_subnet_ids" { type = list(string) }
+
+variable "log_retention_days" {
+  type    = number
+  default = 30
+}
