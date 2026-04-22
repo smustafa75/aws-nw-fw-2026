@@ -29,9 +29,9 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "ReceivedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
-            ["AWS/NetworkFirewall", "PassedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
-            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]]
+            ["AWS/NetworkFirewall", "ReceivedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0], "Engine", "Stateless"],
+            ["AWS/NetworkFirewall", "PassedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0], "Engine", "Stateless"],
+            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0], "Engine", "Stateless"]
           ]
         }
       },
@@ -50,9 +50,9 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "ReceivedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]],
-            ["AWS/NetworkFirewall", "PassedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]],
-            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]]
+            ["AWS/NetworkFirewall", "ReceivedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1], "Engine", "Stateless"],
+            ["AWS/NetworkFirewall", "PassedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1], "Engine", "Stateless"],
+            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1], "Engine", "Stateless"]
           ]
         }
       },
@@ -94,8 +94,8 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0], { label = "Dropped ${local.azs[0]}", color = "#d62728" }],
-            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1], { label = "Dropped ${local.azs[1]}", color = "#ff7f0e" }]
+            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0], "Engine", "Stateless", { label = "Dropped ${local.azs[0]}", color = "#d62728" }],
+            ["AWS/NetworkFirewall", "DroppedPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1], "Engine", "Stateless", { label = "Dropped ${local.azs[1]}", color = "#ff7f0e" }]
           ]
         }
       },
@@ -114,10 +114,10 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "BlockedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
-            ["AWS/NetworkFirewall", "BlockedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]],
-            ["AWS/NetworkFirewall", "RejectedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
-            ["AWS/NetworkFirewall", "RejectedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]]
+            ["AWS/NetworkFirewall", "BlockedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0], "Engine", "Stateful"],
+            ["AWS/NetworkFirewall", "BlockedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1], "Engine", "Stateful"],
+            ["AWS/NetworkFirewall", "RejectedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0], "Engine", "Stateful"],
+            ["AWS/NetworkFirewall", "RejectedFlows", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1], "Engine", "Stateful"]
           ]
         }
       },
@@ -136,8 +136,8 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "StreamExceptionPolicyPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
-            ["AWS/NetworkFirewall", "StreamExceptionPolicyPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]]
+            ["AWS/NetworkFirewall", "StreamExceptionPolicyPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0], "Engine", "Stateful"],
+            ["AWS/NetworkFirewall", "StreamExceptionPolicyPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1], "Engine", "Stateful"]
           ]
         }
       },
@@ -156,8 +156,8 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
           stat   = "Sum"
           period = 60
           metrics = [
-            ["AWS/NetworkFirewall", "NoRuleGroupMatchPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0]],
-            ["AWS/NetworkFirewall", "NoRuleGroupMatchPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1]]
+            ["AWS/NetworkFirewall", "NoRuleGroupMatchPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[0], "Engine", "Stateful"],
+            ["AWS/NetworkFirewall", "NoRuleGroupMatchPackets", "FirewallName", local.fw_name, "AvailabilityZone", local.azs[1], "Engine", "Stateful"]
           ]
         }
       }
