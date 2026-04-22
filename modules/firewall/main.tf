@@ -1,4 +1,6 @@
-# Stateless rule group — forward all to stateful engine
+# ── Stateless Rule Group ──────────────────────────────────────────────────────
+# Matches all traffic (0.0.0.0/0 → 0.0.0.0/0) and forwards it to the stateful
+# engine. This is the standard pattern when stateful rules do the real work.
 resource "aws_networkfirewall_rule_group" "stateless_fwd" {
   name        = "${var.project_name}-stateless-fwd"
   capacity    = 100
@@ -24,7 +26,12 @@ resource "aws_networkfirewall_rule_group" "stateless_fwd" {
   tags = { Name = "${var.project_name}-stateless-fwd" }
 }
 
-# Stateful rule group — allow ICMP + HTTP/S, drop rest
+# ── Stateful Rule Group ───────────────────────────────────────────────────────
+# Three PASS rules:
+#   sid 1 — ICMP any direction (east-west ping tests)
+#   sid 2 — TCP 443 from 10.0.0.0/8 (HTTPS outbound from all workloads)
+#   sid 3 — TCP 80  from 10.0.0.0/8 (HTTP outbound — remove if not needed)
+# All other traffic is implicitly dropped by the default policy action.
 resource "aws_networkfirewall_rule_group" "stateful_allow" {
   name        = "${var.project_name}-stateful-allow"
   capacity    = 100
@@ -33,6 +40,7 @@ resource "aws_networkfirewall_rule_group" "stateful_allow" {
 
   rule_group {
     rules_source {
+      # sid:1 — allow ICMP in any direction for east-west reachability testing.
       stateful_rule {
         action = "PASS"
         header {
@@ -48,6 +56,7 @@ resource "aws_networkfirewall_rule_group" "stateful_allow" {
           settings = ["1"]
         }
       }
+      # sid:2 — allow HTTPS (443) from any RFC-1918 address.
       stateful_rule {
         action = "PASS"
         header {
@@ -63,6 +72,7 @@ resource "aws_networkfirewall_rule_group" "stateful_allow" {
           settings = ["2"]
         }
       }
+      # sid:3 — allow HTTP (80) from any RFC-1918 address.
       stateful_rule {
         action = "PASS"
         header {
@@ -83,7 +93,9 @@ resource "aws_networkfirewall_rule_group" "stateful_allow" {
   tags = { Name = "${var.project_name}-stateful-allow" }
 }
 
-# Firewall policy
+# ── Firewall Policy ───────────────────────────────────────────────────────────
+# Default stateless action: forward everything to the stateful engine.
+# Stateful engine evaluates the allow rules above; unmatched traffic is dropped.
 resource "aws_networkfirewall_firewall_policy" "policy" {
   name = "${var.project_name}-fw-policy"
 

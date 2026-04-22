@@ -1,3 +1,5 @@
+# Minimum Terraform version and provider constraints.
+# AWS provider ~> 6.0 is required for the native NW-FW TGW attachment resource.
 terraform {
   required_version = ">= 1.3"
   required_providers {

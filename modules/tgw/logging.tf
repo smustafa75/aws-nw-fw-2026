@@ -1,3 +1,7 @@
+# ── NW-FW CloudWatch Logging ──────────────────────────────────────────────────
+# Two separate log groups: one for connection flow records, one for rule-match alerts.
+# Retention is configurable via var.log_retention_days (default 30 days).
+
 resource "aws_cloudwatch_log_group" "nwfw_flow" {
   name              = "/aws/network-firewall/${var.project_name}/flow"
   retention_in_days = var.log_retention_days
@@ -10,6 +14,8 @@ resource "aws_cloudwatch_log_group" "nwfw_alert" {
   tags              = { Name = "nwfw-alert-${var.project_name}" }
 }
 
+# Attaches both log destinations to the firewall.
+# FLOW logs every accepted/dropped connection; ALERT logs rule-match events.
 resource "aws_networkfirewall_logging_configuration" "fw" {
   firewall_arn = aws_networkfirewall_firewall.fw.arn
 

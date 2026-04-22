@@ -1,11 +1,19 @@
+# ── CloudWatch Dashboard ──────────────────────────────────────────────────────
+# Dashboard name: <project_name>-nwfw-dashboard
+# All metrics are at 1-minute resolution, scoped per AZ.
+# Layout: 3 rows × 24 columns (each widget is 8 or 12 wide).
+
 locals {
   fw_name = "fw-${var.project_name}"
-  azs     = ["eu-west-1a", "eu-west-1b"]
+  # Hard-coded to eu-west-1 AZs — update if deploying to another region.
+  azs = ["eu-west-1a", "eu-west-1b"]
 }
 
 resource "aws_cloudwatch_dashboard" "nwfw" {
   dashboard_name = "${var.project_name}-nwfw-dashboard"
 
+  # Explicit depends_on ensures the dashboard is only created after the firewall
+  # policy and rule groups exist (avoids metric-not-found errors on first apply).
   depends_on = [
     aws_networkfirewall_firewall_policy.policy,
     aws_networkfirewall_rule_group.stateless_fwd,
@@ -15,7 +23,9 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
   dashboard_body = jsonencode({
     widgets = [
 
-      # ── Row 1: Received vs Passed vs Dropped (AZ-a) ──────────────────────
+      # ── Row 1 (y=0): Traffic overview per AZ + endpoint health ───────────
+
+      # Received / Passed / Dropped packets for AZ-a (stateless engine).
       {
         type   = "metric"
         x      = 0
@@ -36,7 +46,7 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         }
       },
 
-      # ── Row 1: Received vs Passed vs Dropped (AZ-b) ──────────────────────
+      # Received / Passed / Dropped packets for AZ-b (stateless engine).
       {
         type   = "metric"
         x      = 8
@@ -57,7 +67,7 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         }
       },
 
-      # ── Row 1: Healthy / Unhealthy endpoints ─────────────────────────────
+      # Healthy vs Unhealthy endpoints — alarm annotation at 1 to highlight degraded state.
       {
         type   = "metric"
         x      = 16
@@ -80,7 +90,9 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         }
       },
 
-      # ── Row 2: Dropped packets — both AZs on one graph ───────────────────
+      # ── Row 2 (y=6): Dropped packets + blocked/rejected flows ─────────────
+
+      # Dropped packets for both AZs on a single graph — easy side-by-side comparison.
       {
         type   = "metric"
         x      = 0
@@ -100,7 +112,7 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         }
       },
 
-      # ── Row 2: Blocked + Rejected flows ──────────────────────────────────
+      # Blocked and Rejected flows from the stateful engine — indicates policy hits.
       {
         type   = "metric"
         x      = 12
@@ -122,7 +134,11 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         }
       },
 
-      # ── Row 3: Stream exception policy packets ────────────────────────────
+      # ── Row 3 (y=12): Diagnostic metrics ─────────────────────────────────
+
+      # StreamExceptionPolicyPackets — non-zero values indicate asymmetric routing.
+      # If traffic enters NW-FW on one AZ but the return path uses a different AZ,
+      # the stateful engine cannot match the flow and applies the stream exception policy.
       {
         type   = "metric"
         x      = 0
@@ -142,7 +158,8 @@ resource "aws_cloudwatch_dashboard" "nwfw" {
         }
       },
 
-      # ── Row 3: No-rule-group-match packets ───────────────────────────────
+      # NoRuleGroupMatchPackets — traffic that passed through without matching any rule group.
+      # Non-zero values suggest a gap in the firewall policy (missing rule group or capacity).
       {
         type   = "metric"
         x      = 12

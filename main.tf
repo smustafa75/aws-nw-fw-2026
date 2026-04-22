@@ -1,10 +1,12 @@
+# AWS provider — region and profile are driven by variables.tf / terraform.tfvars.
 provider "aws" {
   region  = var.aws_region
   profile = var.aws_profile
 }
 
 # ── IAM ───────────────────────────────────────────────────────────────────────
-
+# Creates the EC2 instance role with SSM, S3, and CloudWatch permissions.
+# The instance profile is consumed by both compute modules.
 module "iam" {
   source         = "./iam"
   policy_name    = var.policy_name
@@ -16,7 +18,8 @@ module "iam" {
 }
 
 # ── Firewall Policy ───────────────────────────────────────────────────────────
-
+# Builds the NW-FW policy, stateless forward-all rule group, stateful allow
+# rule group (ICMP + TCP 443/80 from 10.0.0.0/8), and the CloudWatch dashboard.
 module "firewall" {
   source       = "./modules/firewall"
   project_name = var.project_name
@@ -24,7 +27,8 @@ module "firewall" {
 }
 
 # ── Workload VPC A ────────────────────────────────────────────────────────────
-
+# Creates VPC, two workload subnets (one per AZ), two /28 TGW subnets,
+# a workload security group, and three SSM interface endpoints.
 module "workload_vpc_a" {
   source                = "./modules/workload_vpc"
   name                  = "workload-a"
@@ -35,7 +39,6 @@ module "workload_vpc_a" {
 }
 
 # ── Workload VPC B ────────────────────────────────────────────────────────────
-
 module "workload_vpc_b" {
   source                = "./modules/workload_vpc"
   name                  = "workload-b"
@@ -46,7 +49,8 @@ module "workload_vpc_b" {
 }
 
 # ── Egress VPC ────────────────────────────────────────────────────────────────
-
+# Creates VPC, IGW, two public subnets, two NAT Gateways (one per AZ),
+# two /28 TGW subnets, and per-AZ route tables for TGW → NAT GW traffic.
 module "egress_vpc" {
   source              = "./modules/egress_vpc"
   vpc_cidr            = var.egress_vpc_cidr
@@ -55,7 +59,9 @@ module "egress_vpc" {
 }
 
 # ── Transit Gateway + NW-FW ───────────────────────────────────────────────────
-
+# Creates the TGW, three VPC attachments, the NW-FW native TGW attachment,
+# three route tables (spoke / firewall / egress), and all TGW routes.
+# Also configures NW-FW flow + alert logging to CloudWatch.
 module "tgw" {
   source = "./modules/tgw"
 
@@ -74,23 +80,27 @@ module "tgw" {
   egress_tgw_subnet_ids = module.egress_vpc.tgw_subnet_ids
 }
 
-# ── Post-TGW VPC Routes (added after TGW is ready to break dependency cycle) ──
+# ── Post-TGW VPC Routes ───────────────────────────────────────────────────────
+# These routes are defined at the root level (not inside workload_vpc / egress_vpc)
+# to break the circular dependency: VPC modules don't know the TGW ID at creation
+# time, and the TGW module needs the VPC/subnet IDs first.
 
-# Workload VPC A — default route to TGW
+# Workload VPC A — default route sends all traffic to TGW (→ NW-FW inspection).
 resource "aws_route" "workload_a_default" {
   route_table_id         = module.workload_vpc_a.workload_route_table_id
   destination_cidr_block = "0.0.0.0/0"
   transit_gateway_id     = module.tgw.tgw_id
 }
 
-# Workload VPC B — default route to TGW
+# Workload VPC B — same pattern as VPC A.
 resource "aws_route" "workload_b_default" {
   route_table_id         = module.workload_vpc_b.workload_route_table_id
   destination_cidr_block = "0.0.0.0/0"
   transit_gateway_id     = module.tgw.tgw_id
 }
 
-# Egress VPC TGW subnets — return routes to workload CIDRs via TGW
+# Egress VPC TGW subnets — return routes so reply traffic reaches workload VPCs.
+# count = 2 because there is one route table per AZ in the egress TGW subnets.
 resource "aws_route" "egress_to_workload_a" {
   count                  = 2
   route_table_id         = module.egress_vpc.tgw_route_table_ids[count.index]
@@ -105,7 +115,8 @@ resource "aws_route" "egress_to_workload_b" {
   transit_gateway_id     = module.tgw.tgw_id
 }
 
-# Egress VPC public subnet RT — NAT GW return traffic must reach TGW for workload CIDRs
+# Egress VPC public subnet RT — NAT GW reply traffic must be routed back to TGW
+# for workload-bound packets (asymmetric path without these routes would be dropped).
 resource "aws_route" "egress_public_to_workload_a" {
   route_table_id         = module.egress_vpc.public_route_table_id
   destination_cidr_block = var.workload_a_vpc_cidr
@@ -119,7 +130,7 @@ resource "aws_route" "egress_public_to_workload_b" {
 }
 
 # ── Compute — Workload VPC A ──────────────────────────────────────────────────
-
+# Two EC2 instances (one per AZ) with SSM access — no SSH key required.
 module "compute_a" {
   source            = "./modules/compute"
   name              = "workload-a"
@@ -133,7 +144,6 @@ module "compute_a" {
 }
 
 # ── Compute — Workload VPC B ──────────────────────────────────────────────────
-
 module "compute_b" {
   source            = "./modules/compute"
   name              = "workload-b"

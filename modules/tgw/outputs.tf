@@ -1,7 +1,9 @@
+# TGW ID — consumed by root main.tf to add VPC-side routes after TGW is ready.
 output "tgw_id" {
   value = aws_ec2_transit_gateway.tgw.id
 }
 
+# NW-FW TGW attachment ID — used internally for route table associations and routes.
 output "fw_attachment_id" {
   value = local.fw_attachment_id
 }
@@ -18,6 +20,7 @@ output "egress_attachment_id" {
   value = aws_ec2_transit_gateway_vpc_attachment.egress.id
 }
 
+# NW-FW ARN — surfaced to root outputs for reference.
 output "firewall_arn" {
   value = aws_networkfirewall_firewall.fw.arn
 }

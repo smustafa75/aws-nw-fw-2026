@@ -1,5 +1,8 @@
+# Resolve AZ names for subnet placement.
 data "aws_availability_zones" "available" { state = "available" }
 
+# ── VPC ───────────────────────────────────────────────────────────────────────
+# DNS hostnames and support enabled — required for SSM VPC endpoints to resolve.
 resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -7,7 +10,8 @@ resource "aws_vpc" "this" {
   tags = { Name = "${var.name}-vpc" }
 }
 
-# Workload subnets — one per AZ
+# ── Subnets ───────────────────────────────────────────────────────────────────
+# Workload subnets — one per AZ, host EC2 instances and SSM endpoints.
 resource "aws_subnet" "workload" {
   count             = 2
   vpc_id            = aws_vpc.this.id
@@ -16,7 +20,7 @@ resource "aws_subnet" "workload" {
   tags = { Name = "${var.name}-workload-${count.index + 1}" }
 }
 
-# TGW attachment subnet — one per AZ
+# TGW attachment subnets — /28, one per AZ, used exclusively for TGW ENIs.
 resource "aws_subnet" "tgw" {
   count             = 2
   vpc_id            = aws_vpc.this.id
@@ -25,7 +29,9 @@ resource "aws_subnet" "tgw" {
   tags = { Name = "${var.name}-tgw-${count.index + 1}" }
 }
 
-# Route table for workload subnets — default route added from root after TGW is created
+# ── Route Table ───────────────────────────────────────────────────────────────
+# Created here without a default route — the root module adds 0.0.0.0/0 → TGW
+# after the TGW is provisioned to avoid a circular dependency.
 resource "aws_route_table" "workload" {
   vpc_id = aws_vpc.this.id
   tags   = { Name = "${var.name}-workload-rt" }
@@ -37,7 +43,9 @@ resource "aws_route_table_association" "workload" {
   route_table_id = aws_route_table.workload.id
 }
 
-# Security group for workload instances
+# ── Security Group ────────────────────────────────────────────────────────────
+# Allows ICMP and HTTPS from the entire 10.0.0.0/8 supernet (east-west + return traffic).
+# All outbound traffic is permitted — NW-FW enforces the actual egress policy.
 resource "aws_security_group" "workload" {
   name        = "${var.name}-workload-sg"
   description = "Workload instances SG"
@@ -64,7 +72,11 @@ resource "aws_security_group" "workload" {
   tags = { Name = "${var.name}-workload-sg" }
 }
 
-# VPC endpoints for SSM (no internet access needed)
+# ── SSM VPC Endpoints ─────────────────────────────────────────────────────────
+# Three interface endpoints allow SSM Session Manager to reach instances
+# without internet access or a NAT Gateway in the workload VPC.
+# private_dns_enabled = true so the SSM agent uses the standard endpoint URLs.
+
 resource "aws_vpc_endpoint" "ssm" {
   vpc_id              = aws_vpc.this.id
   service_name        = "com.amazonaws.${var.region}.ssm"
