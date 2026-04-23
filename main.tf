@@ -78,6 +78,10 @@ module "tgw" {
 
   egress_vpc_id         = module.egress_vpc.vpc_id
   egress_tgw_subnet_ids = module.egress_vpc.tgw_subnet_ids
+
+  alb_vpc_id         = module.alb_vpc.vpc_id
+  alb_tgw_subnet_ids = module.alb_vpc.tgw_subnet_ids
+  alb_vpc_cidr       = var.alb_vpc_cidr
 }
 
 # ── Post-TGW VPC Routes ───────────────────────────────────────────────────────
@@ -154,4 +158,44 @@ module "compute_b" {
   security_group_id = module.workload_vpc_b.workload_sg_id
   instance_profile  = module.iam.iam_instance_profile
   depends_on        = [module.iam]
+}
+
+# ── ALB VPC ───────────────────────────────────────────────────────────────────
+# Dedicated public VPC for the internet-facing ALB. Keeping the ALB in a
+# separate VPC ensures ALB ↔ EC2 traffic crosses the TGW and is inspected
+# by NW-FW in both directions. VPC A remains fully private.
+module "alb_vpc" {
+  source              = "./modules/alb_vpc"
+  vpc_cidr            = var.alb_vpc_cidr
+  public_subnet_cidrs = var.alb_public_subnet_cidrs
+  tgw_subnet_cidrs    = var.alb_tgw_subnet_cidrs
+}
+
+# ── ALB ───────────────────────────────────────────────────────────────────────
+# Internet-facing ALB in the ALB VPC. Targets are the private IPs of VPC A
+# EC2 instances — ip target type is required for cross-VPC registration.
+module "alb" {
+  source            = "./modules/alb"
+  vpc_id            = module.alb_vpc.vpc_id
+  public_subnet_ids = module.alb_vpc.public_subnet_ids
+  alb_sg_id         = module.alb_vpc.alb_sg_id
+  target_ips        = module.compute_a.private_ips
+  depends_on        = [module.compute_a]
+}
+
+# ── Post-TGW Route: ALB VPC TGW subnets → TGW ────────────────────────────────
+# ALB VPC TGW subnets need a route to workload VPCs via TGW.
+# One route table per AZ — same pattern as egress_vpc TGW subnet routes.
+resource "aws_route" "alb_tgw_to_workload_a" {
+  count                  = 2
+  route_table_id         = module.alb_vpc.tgw_route_table_ids[count.index]
+  destination_cidr_block = var.workload_a_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
+}
+
+resource "aws_route" "alb_tgw_to_workload_b" {
+  count                  = 2
+  route_table_id         = module.alb_vpc.tgw_route_table_ids[count.index]
+  destination_cidr_block = var.workload_b_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
 }

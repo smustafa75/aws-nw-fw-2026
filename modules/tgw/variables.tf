@@ -19,6 +19,11 @@ variable "workload_b_cidr" {}
 variable "egress_vpc_id" {}
 variable "egress_tgw_subnet_ids" { type = list(string) }
 
+# ALB VPC — VPC ID, TGW attachment subnet IDs, and CIDR for route table entries.
+variable "alb_vpc_id" {}
+variable "alb_tgw_subnet_ids" { type = list(string) }
+variable "alb_vpc_cidr" {}
+
 # CloudWatch log retention for NW-FW flow and alert logs (days).
 variable "log_retention_days" {
   type    = number

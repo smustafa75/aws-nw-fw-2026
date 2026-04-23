@@ -43,6 +43,18 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "egress" {
   tags = { Name = "TGW-attach-egress" }
 }
 
+# ── ALB VPC Attachment ────────────────────────────────────────────────────────
+# 4th spoke — ALB VPC. Traffic between ALB and workload VPCs crosses TGW,
+# ensuring NW-FW inspects every ALB ↔ EC2 request in both directions.
+resource "aws_ec2_transit_gateway_vpc_attachment" "alb" {
+  transit_gateway_id                              = aws_ec2_transit_gateway.tgw.id
+  vpc_id                                          = var.alb_vpc_id
+  subnet_ids                                      = var.alb_tgw_subnet_ids
+  transit_gateway_default_route_table_association = false
+  transit_gateway_default_route_table_propagation = false
+  tags = { Name = "TGW-attach-alb" }
+}
+
 # ── NW-FW Native TGW Attachment ───────────────────────────────────────────────
 # This is the GA feature (eu-west-1) — no inspection VPC needed.
 # The firewall is attached directly to the TGW; AWS manages the ENIs internally.
@@ -106,6 +118,12 @@ resource "aws_ec2_transit_gateway_route_table_association" "egress" {
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.egress.id
 }
 
+# ALB VPC → spoke-rt (same as workload VPCs — all traffic goes to NW-FW first).
+resource "aws_ec2_transit_gateway_route_table_association" "alb" {
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.alb.id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.spoke.id
+}
+
 # ── Local: NW-FW attachment ID ────────────────────────────────────────────────
 # Extracted once and reused across all route resources to avoid repetition.
 locals {
@@ -135,6 +153,13 @@ resource "aws_ec2_transit_gateway_route" "spoke_workload_b" {
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.spoke.id
 }
 
+# ALB VPC CIDR in spoke-rt — return traffic from workload VPCs to ALB hits NW-FW.
+resource "aws_ec2_transit_gateway_route" "spoke_alb" {
+  destination_cidr_block         = var.alb_vpc_cidr
+  transit_gateway_attachment_id  = local.fw_attachment_id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.spoke.id
+}
+
 # ── Firewall RT Routes ────────────────────────────────────────────────────────
 # After NW-FW inspects traffic, it forwards to the correct destination attachment.
 
@@ -156,6 +181,13 @@ resource "aws_ec2_transit_gateway_route" "fw_to_workload_b" {
 resource "aws_ec2_transit_gateway_route" "fw_to_egress" {
   destination_cidr_block         = "0.0.0.0/0"
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.egress.id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.firewall.id
+}
+
+# ALB VPC: after inspection, forward traffic destined for ALB VPC to ALB attachment.
+resource "aws_ec2_transit_gateway_route" "fw_to_alb" {
+  destination_cidr_block         = var.alb_vpc_cidr
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.alb.id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.firewall.id
 }
 

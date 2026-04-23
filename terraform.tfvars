@@ -26,3 +26,8 @@ disk_size     = 20
 role_name   = "fw-iam-role"
 policy_name = "fw-role-policy"
 s3_policy   = "fw-s3-policy"
+
+# ALB VPC — dedicated VPC for internet-facing ALB
+alb_vpc_cidr            = "10.3.0.0/16"
+alb_public_subnet_cidrs = ["10.3.1.0/27", "10.3.2.0/27"]
+alb_tgw_subnet_cidrs    = ["10.3.10.0/28", "10.3.11.0/28"]

@@ -20,6 +20,10 @@ output "egress_attachment_id" {
   value = aws_ec2_transit_gateway_vpc_attachment.egress.id
 }
 
+output "alb_attachment_id" {
+  value = aws_ec2_transit_gateway_vpc_attachment.alb.id
+}
+
 # NW-FW ARN — surfaced to root outputs for reference.
 output "firewall_arn" {
   value = aws_networkfirewall_firewall.fw.arn

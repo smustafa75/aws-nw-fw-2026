@@ -38,3 +38,12 @@ variable "disk_size" { default = 20 }
 variable "role_name" {}
 variable "policy_name" {}
 variable "s3_policy" {}
+
+# ── ALB VPC ───────────────────────────────────────────────────────────────────
+# Dedicated VPC for the internet-facing ALB. Keeping ALB in a separate VPC
+# forces ALB ↔ EC2 traffic through the TGW and NW-FW for inspection.
+variable "alb_vpc_cidr" {}
+# /27 minimum per AWS ALB subnet requirements.
+variable "alb_public_subnet_cidrs" { type = list(string) }
+# /28 TGW attachment subnets in the ALB VPC.
+variable "alb_tgw_subnet_cidrs" { type = list(string) }

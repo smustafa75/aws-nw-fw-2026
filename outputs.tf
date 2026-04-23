@@ -45,3 +45,8 @@ output "workload_b_private_ips" {
   description = "Private IPs of Workload B instances — use for east-west ping tests."
   value       = module.compute_b.private_ips
 }
+
+output "alb_dns_name" {
+  description = "Public DNS name of the ALB — curl http://<alb_dns_name> to test end-to-end."
+  value       = module.alb.alb_dns_name
+}
