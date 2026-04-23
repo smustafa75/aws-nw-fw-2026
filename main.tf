@@ -176,7 +176,8 @@ module "alb_vpc" {
 # EC2 instances — ip target type is required for cross-VPC registration.
 module "alb" {
   source            = "./modules/alb"
-  vpc_id            = module.alb_vpc.vpc_id
+  alb_vpc_id        = module.alb_vpc.vpc_id
+  target_vpc_id     = module.workload_vpc_a.vpc_id
   public_subnet_ids = module.alb_vpc.public_subnet_ids
   alb_sg_id         = module.alb_vpc.alb_sg_id
   target_ips        = module.compute_a.private_ips

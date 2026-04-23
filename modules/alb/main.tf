@@ -13,12 +13,13 @@ resource "aws_lb" "this" {
 
 # ── Target Group ──────────────────────────────────────────────────────────────
 # ip target type required — EC2 instances are in a different VPC.
+# vpc_id must be the VPC containing the target IPs (VPC A), not the ALB VPC.
 # Health check on /index.html port 80 — httpd must be running on targets.
 resource "aws_lb_target_group" "this" {
   name        = "${var.name}-tg"
   port        = 80
   protocol    = "HTTP"
-  vpc_id      = var.vpc_id
+  vpc_id      = var.target_vpc_id
   target_type = "ip"
 
   health_check {
