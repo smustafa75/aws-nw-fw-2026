@@ -23,9 +23,9 @@ variable "instance_profile" {}
 variable "user_data" {
   default = <<-EOF
     #!/bin/bash
-    yum install -y httpd
-    echo "<h1>Hello from $(hostname -f)</h1>" > /var/www/html/index.html
-    systemctl enable httpd
-    systemctl start httpd
+    sudo yum install -y httpd
+    echo "<h1>Hello from $(hostname -f)</h1>" | sudo tee /var/www/html/index.html
+    sudo systemctl enable httpd
+    sudo systemctl start httpd
   EOF
 }
