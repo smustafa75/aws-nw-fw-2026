@@ -1,6 +1,4 @@
 # ── Application Load Balancer ─────────────────────────────────────────────────
-# Internet-facing ALB in the dedicated ALB VPC public subnets.
-# Targets are EC2 private IPs in VPC A — must use ip target type (cross-VPC).
 resource "aws_lb" "this" {
   name               = var.name
   internal           = false
@@ -12,14 +10,13 @@ resource "aws_lb" "this" {
 }
 
 # ── Target Group ──────────────────────────────────────────────────────────────
-# ip target type required — EC2 instances are in a different VPC.
-# vpc_id must be the VPC containing the target IPs (VPC A), not the ALB VPC.
-# Health check on /index.html port 80 — httpd must be running on targets.
+# vpc_id must match the ALB VPC — AWS requires ALB and TG in the same VPC.
+# ip target type allows RFC-1918 addresses from other VPCs (cross-VPC via TGW).
 resource "aws_lb_target_group" "this" {
   name        = "${var.name}-tg"
   port        = 80
   protocol    = "HTTP"
-  vpc_id      = var.target_vpc_id
+  vpc_id      = var.alb_vpc_id
   target_type = "ip"
 
   health_check {
@@ -49,10 +46,12 @@ resource "aws_lb_listener" "http" {
 }
 
 # ── Target Registrations ──────────────────────────────────────────────────────
-# Register each EC2 private IP from VPC A into the target group.
+# Target IPs are outside the ALB VPC (they are in VPC A via TGW).
+# availability_zone = "all" is required when the IP is outside the TG VPC.
 resource "aws_lb_target_group_attachment" "this" {
-  count            = length(var.target_ips)
-  target_group_arn = aws_lb_target_group.this.arn
-  target_id        = var.target_ips[count.index]
-  port             = 80
+  count             = length(var.target_ips)
+  target_group_arn  = aws_lb_target_group.this.arn
+  target_id         = var.target_ips[count.index]
+  port              = 80
+  availability_zone = "all"
 }
