@@ -14,6 +14,10 @@ output "tgw_route_table_ids" {
   value = aws_route_table.tgw[*].id
 }
 
+output "public_route_table_id" {
+  value = aws_route_table.public.id
+}
+
 output "alb_sg_id" {
   value = aws_security_group.alb.id
 }

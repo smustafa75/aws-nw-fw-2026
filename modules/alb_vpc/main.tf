@@ -84,10 +84,10 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   egress {
-    description = "HTTP to workload VPCs"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
+    description = "All traffic to workload VPCs (health checks + ephemeral return ports)"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["10.0.0.0/8"]
   }
   tags = { Name = "alb-sg" }

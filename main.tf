@@ -217,3 +217,19 @@ resource "aws_route" "alb_tgw_to_workload_b" {
   transit_gateway_id     = module.tgw.tgw_id
   depends_on             = [module.tgw]
 }
+
+# ALB public subnets also need routes to workload VPCs — the ALB nodes live here
+# and send health check / request traffic directly to EC2 target IPs.
+resource "aws_route" "alb_public_to_workload_a" {
+  route_table_id         = module.alb_vpc.public_route_table_id
+  destination_cidr_block = var.workload_a_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
+}
+
+resource "aws_route" "alb_public_to_workload_b" {
+  route_table_id         = module.alb_vpc.public_route_table_id
+  destination_cidr_block = var.workload_b_vpc_cidr
+  transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
+}
