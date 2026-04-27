@@ -144,7 +144,14 @@ module "compute_a" {
   subnet_ids        = module.workload_vpc_a.workload_subnet_ids
   security_group_id = module.workload_vpc_a.workload_sg_id
   instance_profile  = module.iam.iam_instance_profile
-  depends_on        = [module.iam]
+  # Must wait for TGW + NW-FW + NAT GW to be fully provisioned and for the
+  # workload default route (0.0.0.0/0 → TGW) to exist before instances boot.
+  # user_data runs yum install which requires the full north-south path to be up.
+  depends_on = [
+    module.iam,
+    module.tgw,
+    aws_route.workload_a_default,
+  ]
 }
 
 # ── Compute — Workload VPC B ──────────────────────────────────────────────────
@@ -157,7 +164,11 @@ module "compute_b" {
   subnet_ids        = module.workload_vpc_b.workload_subnet_ids
   security_group_id = module.workload_vpc_b.workload_sg_id
   instance_profile  = module.iam.iam_instance_profile
-  depends_on        = [module.iam]
+  depends_on = [
+    module.iam,
+    module.tgw,
+    aws_route.workload_b_default,
+  ]
 }
 
 # ── ALB VPC ───────────────────────────────────────────────────────────────────

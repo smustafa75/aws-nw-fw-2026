@@ -21,11 +21,12 @@ variable "instance_profile" {}
 # Optional user_data script — defaults to installing httpd and serving index.html.
 # systemctl enable ensures httpd starts on every reboot.
 variable "user_data" {
-  default = <<-EOF
+  # IMPORTANT: use single-quoted heredoc (<<-'EOF') so that $(hostname -f) is
+  # NOT expanded by Terraform/shell at plan time — it runs on the instance at boot.
+  default = <<-'EOF'
     #!/bin/bash
-    sudo yum install -y httpd
-    echo "<h1>Hello from $(hostname -f)</h1>" | sudo tee /var/www/html/index.html
-    sudo systemctl enable httpd
-    sudo systemctl start httpd
+    yum install -y httpd
+    echo "<h1>Hello from $(hostname -f)</h1>" > /var/www/html/index.html
+    systemctl enable --now httpd
   EOF
 }
