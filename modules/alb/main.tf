@@ -19,13 +19,16 @@ resource "aws_lb_target_group" "this" {
   vpc_id      = var.alb_vpc_id
   target_type = "ip"
 
+  # Reduce drain time so failover to healthy targets is near-instant
+  deregistration_delay = 30
+
   health_check {
     path                = "/index.html"
     protocol            = "HTTP"
     port                = "80"
     healthy_threshold   = 2
     unhealthy_threshold = 2
-    interval            = 30
+    interval            = 10
     timeout             = 5
     matcher             = "200"
   }
