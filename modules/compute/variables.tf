@@ -25,8 +25,27 @@ variable "user_data" {
   # $(hostname -f) at plan time; the instance shell expands it correctly at boot.
   default = <<-EOF
     #!/bin/bash
-    yum install -y httpd
+    yum install -y httpd amazon-cloudwatch-agent
     echo "<h1>Hello from $$(hostname -f)</h1>" > /var/www/html/index.html
     systemctl enable --now httpd
+
+    # CloudWatch agent config — collect disk used_percent on root volume every 60s
+    cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWEOF'
+    {
+      "metrics": {
+        "metrics_collected": {
+          "disk": {
+            "measurement": ["used_percent"],
+            "resources": ["/"],
+            "metrics_collection_interval": 60
+          }
+        }
+      }
+    }
+    CWEOF
+
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+      -a fetch-config -m ec2 \
+      -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
   EOF
 }
