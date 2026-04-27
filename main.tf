@@ -90,10 +90,12 @@ module "tgw" {
 # time, and the TGW module needs the VPC/subnet IDs first.
 
 # Workload VPC A — default route sends all traffic to TGW (→ NW-FW inspection).
+# depends_on the attachment to avoid InvalidTransitGatewayID.NotFound race condition.
 resource "aws_route" "workload_a_default" {
   route_table_id         = module.workload_vpc_a.workload_route_table_id
   destination_cidr_block = "0.0.0.0/0"
   transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
 }
 
 # Workload VPC B — same pattern as VPC A.
@@ -101,15 +103,16 @@ resource "aws_route" "workload_b_default" {
   route_table_id         = module.workload_vpc_b.workload_route_table_id
   destination_cidr_block = "0.0.0.0/0"
   transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
 }
 
 # Egress VPC TGW subnets — return routes so reply traffic reaches workload VPCs.
-# count = 2 because there is one route table per AZ in the egress TGW subnets.
 resource "aws_route" "egress_to_workload_a" {
   count                  = 2
   route_table_id         = module.egress_vpc.tgw_route_table_ids[count.index]
   destination_cidr_block = var.workload_a_vpc_cidr
   transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
 }
 
 resource "aws_route" "egress_to_workload_b" {
@@ -117,20 +120,22 @@ resource "aws_route" "egress_to_workload_b" {
   route_table_id         = module.egress_vpc.tgw_route_table_ids[count.index]
   destination_cidr_block = var.workload_b_vpc_cidr
   transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
 }
 
-# Egress VPC public subnet RT — NAT GW reply traffic must be routed back to TGW
-# for workload-bound packets (asymmetric path without these routes would be dropped).
+# Egress VPC public subnet RT — NAT GW reply traffic must be routed back to TGW.
 resource "aws_route" "egress_public_to_workload_a" {
   route_table_id         = module.egress_vpc.public_route_table_id
   destination_cidr_block = var.workload_a_vpc_cidr
   transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
 }
 
 resource "aws_route" "egress_public_to_workload_b" {
   route_table_id         = module.egress_vpc.public_route_table_id
   destination_cidr_block = var.workload_b_vpc_cidr
   transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
 }
 
 # ── Compute — Workload VPC A ──────────────────────────────────────────────────
@@ -202,6 +207,7 @@ resource "aws_route" "alb_tgw_to_workload_a" {
   route_table_id         = module.alb_vpc.tgw_route_table_ids[count.index]
   destination_cidr_block = var.workload_a_vpc_cidr
   transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
 }
 
 resource "aws_route" "alb_tgw_to_workload_b" {
@@ -209,4 +215,5 @@ resource "aws_route" "alb_tgw_to_workload_b" {
   route_table_id         = module.alb_vpc.tgw_route_table_ids[count.index]
   destination_cidr_block = var.workload_b_vpc_cidr
   transit_gateway_id     = module.tgw.tgw_id
+  depends_on             = [module.tgw]
 }
