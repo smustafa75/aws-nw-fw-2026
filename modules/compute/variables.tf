@@ -21,12 +21,10 @@ variable "instance_profile" {}
 # Optional user_data script — defaults to installing httpd and serving index.html.
 # systemctl enable ensures httpd starts on every reboot.
 variable "user_data" {
-  # $$ is the HCL escape for a literal $ — prevents Terraform from interpolating
-  # $(hostname -f) at plan time; the instance shell expands it correctly at boot.
   default = <<-EOF
     #!/bin/bash
     yum install -y httpd amazon-cloudwatch-agent
-    echo "<h1>Hello from $$(hostname -f)</h1>" > /var/www/html/index.html
+    echo "<h1>Hello from $(hostname -f)</h1>" > /var/www/html/index.html
     systemctl enable --now httpd
 
     # CloudWatch agent config — collect disk used_percent on root volume every 60s
