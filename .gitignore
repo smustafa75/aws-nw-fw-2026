@@ -24,3 +24,6 @@ override.tf.json
 # Ignore CLI config files
 .terraformrc
 .terraform.rc
+
+# Medium article — local draft only, not for version control
+medium-article.md
