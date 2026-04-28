@@ -103,3 +103,21 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_host_count" {
   }
   tags = { Name = "ApplicationLoadBalancerUnHealthyHostCountAlarm_2020" }
 }
+
+resource "aws_cloudwatch_metric_alarm" "target_5xx_2020" {
+  alarm_name          = "ApplicationLoadBalancerTargetHttp5xxCountAlarm_2020-04-01"
+  alarm_description   = "Targets are returning 5xx errors (application errors)"
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "HTTPCode_Target_5XX_Count"
+  statistic           = "Sum"
+  period              = 60
+  evaluation_periods  = 2
+  threshold           = 5
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  dimensions = {
+    LoadBalancer = local.alb_suffix
+    TargetGroup  = local.tg_suffix
+  }
+  tags = { Name = "ApplicationLoadBalancerTargetHttp5xxCountAlarm_2020-04-01" }
+}
